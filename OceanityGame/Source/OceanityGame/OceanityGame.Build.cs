@@ -8,7 +8,7 @@ public class OceanityGame : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AdvancedSessions", "AdvancedSteamSessions", "Niagara" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
