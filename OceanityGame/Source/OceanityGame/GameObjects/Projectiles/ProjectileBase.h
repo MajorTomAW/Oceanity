@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OceanityGame/Libraries/ProjectileLibrary.h"
 #include "UObject/Object.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 #include "NiagaraComponent.h"
+#include "OceanityGame/Libraries/ShipLibrary.h"
 #include "ProjectileBase.generated.h"
 
 /**
@@ -36,7 +36,7 @@ public:
 
 	//* Projectile Info */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Projectile")
-	FProjectileInfo ProjectileInfo;
+	FProjectileProperty ProjectileProperty;
 
 protected:
 	// Called when the game starts or when spawned

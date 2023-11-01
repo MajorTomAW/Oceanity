@@ -2,7 +2,11 @@
 
 
 #include "ProjectileBase.h"
+
+#include "NiagaraFunctionLibrary.h"
+#include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "OceanityGame/Characters/Ships/ShipBase.h"
 
 AProjectileBase::AProjectileBase()
 {
@@ -28,6 +32,8 @@ AProjectileBase::AProjectileBase()
 	
 	SetReplicates(true);
 	SetReplicateMovement(true);
+
+	InitialLifeSpan = 10.f;
 }
 
 void AProjectileBase::BeginPlay()
@@ -43,17 +49,38 @@ void AProjectileBase::OnProjectileHitboxOverlap(UPrimitiveComponent* OverlappedC
 	// Return if not server
 	if (!HasAuthority()) return;
 
-	// Return if OtherActor is null
-	if (!OtherActor) return;
+	// Return if OtherActor is null or OtherActor is the owner
+	if (!OtherActor || OtherActor == GetOwner()) return;
 
+	// UE LOG the OtherActor and the Owner
+	UE_LOG(LogTemp, Warning, TEXT("OtherActor: %s, Owner: %s"), *OtherActor->GetName(), *GetOwner()->GetName());
+	
+
+	UE_LOG(LogTemp, Warning, TEXT("OnProjectileHitboxOverlap"));
+	
 	// Apply damage to OtherActor
 	if (OtherActor->ActorHasTag("Ship"))
 	{
 		// Apply damage to OtherActor
-		UGameplayStatics::ApplyDamage(OtherActor, ProjectileInfo.ProjectileDamage, GetInstigatorController(), this, UDamageType::StaticClass());
+		UGameplayStatics::ApplyDamage(OtherActor, ProjectileProperty.Damage, GetInstigatorController(), this, UDamageType::StaticClass());
+
+		// Cast OtherActor to AShipBase
+		const AShipBase* TargetActor = Cast<AShipBase>(OtherActor);
+		
+		// AddForceAtLocation to the CapsuleComponent of TargetActor in direction the projectile was coming from
+		TargetActor->GetCapsuleComponent()->AddForceAtLocation(ProjectileMovement->Velocity * ProjectileProperty.ImpactImpulse * 0.5f, SweepResult.ImpactPoint);
+		
 
 		// Spawn impact particle system
-		NetMulti_SpawnParticleSystem(ProjectileInfo.ImpactExplosion, SweepResult.ImpactPoint);
+		NetMulti_SpawnParticleSystem(ProjectileProperty.ImpactEffect, SweepResult.ImpactPoint);
+
+		// Destroy projectile
+		Destroy();
+	}
+	else
+	{
+		// Spawn impact particle system
+		NetMulti_SpawnParticleSystem(ProjectileProperty.ImpactEffect, SweepResult.ImpactPoint);
 
 		// Destroy projectile
 		Destroy();
@@ -63,5 +90,5 @@ void AProjectileBase::OnProjectileHitboxOverlap(UPrimitiveComponent* OverlappedC
 void AProjectileBase::NetMulti_SpawnParticleSystem_Implementation(UNiagaraSystem* ParticleSystem, FVector Location)
 {
 	// Spawn particle system
-	// UGameplayStatics::SpawnParticleSystemAtLocation(GetWorld(), ParticleSystem, Location);
+	 UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ParticleSystem, Location);
 }

@@ -9,9 +9,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "OceanityGame/Characters/CharacterBase.h"
 #include "ShipBase.generated.h"
+
+class UNiagaraSystem;
 
 UCLASS()
 class OCEANITYGAME_API AShipBase : public ACharacterBase
@@ -34,6 +37,21 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UArrowComponent* EngineRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UArrowComponent* ProjectileSpawn;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* TurretBase;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* Turret;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* ShipBody;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* ShipCabin;
 	
 	/** Enhanced Movement*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
@@ -54,9 +72,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
 	UInputAction* LookAction;
 
-	/** Ship Info */
+	/** Ship property */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "_Ship")
-	FShipInfo ShipInfo;
+	FShipProperty ShipProperty;
 
 protected:
 	/** Values */
@@ -65,6 +83,12 @@ protected:
 
 	UPROPERTY(Replicated)
 	float InputVelocity = 0.f;
+
+	UPROPERTY(Replicated)
+	bool bAiming = false;
+
+	UPROPERTY(Replicated)
+	FRotator AimRotation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions")
 	ECameraState CameraState = ECameraState::Outside;
@@ -83,11 +107,15 @@ protected:
 
 	// Camera sensitivity multiplayer inside
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions|Sensitivity")
-	float CamSensitivityMultiplier_Inside = 0.4f;
+	float CamSensitivityMultiplier_Inside = 0.3f;
 
 	// Camera sensitivity multiplayer scoped
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions|Sensitivity")
-	float CamSensitivityMultiplier_Scoped = 0.25f;
+	float CamSensitivityMultiplier_Scoped = 0.1f;
+
+	// Muzzle flash particle system
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
+	UNiagaraSystem* MuzzleFlash;
 
 	
 	
@@ -98,6 +126,22 @@ protected:
 	// Called to change Acceleration
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_ChangeAcceleration(float MaxAcceleration, float AccelerationForce);
+
+	// Called to change if player is aiming or not
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_ChangeAiming(bool bNewAiming);
+
+	// Called to tell the server to change the turret rotation
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_ChangeTurretRotation(FRotator ControlRotation);
+	
+	// Called to change turret rotation and replicate to all clients
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
+	void NetMulti_ChangeTurretRotation(FRotator ControlRotation);
+
+	// Called to spawn particle system
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
+	void NetMulti_SpawnParticleSystem(UNiagaraSystem* ParticleSystem, FVector Location, FRotator Rotation);
 
 	/** Enhanced Movement */
 	void Move(const FInputActionValue& Value);
@@ -112,10 +156,22 @@ protected:
 	/** Input Actions */
 	void Shoot();
 
+	UFUNCTION(Server, Reliable)
+	void Server_ShootProjectile();
+
+	UFUNCTION(Client, Reliable)
+	void Client_HideTurret(bool bHide);
+
 	void Aim();
+	void CancelAim();
 
 	void ToggleView();
 
+	void HandleToggleView(bool bInside);
+
+	/** Functions */
+	// Called to replicate control rotation to clients
+	void CalculateControlRotation();
 
 public:
 	// Called every frame
@@ -126,4 +182,11 @@ public:
 
 	// Function to replicate variables to clients
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+	UPROPERTY(Replicated)
+	FRotator SavedControlRotation_Scoped;
+
+	UPROPERTY(Replicated)
+	FRotator SavedControlRotation_Outside;
 };
