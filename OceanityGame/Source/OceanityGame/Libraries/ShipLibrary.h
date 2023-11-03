@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "NiagaraSystem.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "OceanityGame/GameObjects/ShipComponents/ExecuteProperty/ExecuteProperty.h"
 #include "ShipLibrary.generated.h"
 
 UENUM(BlueprintType)
@@ -15,6 +16,38 @@ enum class ECameraState : uint8
 	Scoped
 };
 
+/** Projectile Property */
+USTRUCT(BlueprintType, DisplayName = "Projectile Property")
+struct FProjectileProperty
+{
+	GENERATED_BODY()
+
+	// Projectile damage
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Damage = 0.f;
+
+	// Projectile speed
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Speed = 0.f;
+
+	// Projectile impact impulse
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ImpactImpulse = 0.f;
+
+	/** vfx/sfx */
+	// Projectile impact effect
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UNiagaraSystem* ImpactEffect = nullptr;
+
+	// Projectile hit sound
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* HitSound = nullptr;
+
+	// Projectile no hit sound
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* NoHitSound = nullptr;
+};
+
 /** Movement property */
 USTRUCT(BlueprintType, DisplayName = "Ship Movement Property")
 struct FShipMovementProperty
@@ -22,88 +55,97 @@ struct FShipMovementProperty
 	GENERATED_BODY()
 
 	// Delta time multiplier
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float DeltaTimeMultiplier = 100.f;
 };
 
 /** Parent component for turret, engine, hull, ... */
 USTRUCT(BlueprintType, DisplayName = "Ship Component", meta=(IsPolymorphic = true))
-struct FShipComponents : public FTableRowBase
+struct FShipComponentProperty : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	// Component name
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString ComponentName = "";
 	
 	// Component icon
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UTexture2D* ComponentIcon = nullptr;
 
 	// Component mesh
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UStaticMesh* ComponentMesh = nullptr;
 
 	// Component cost
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int ComponentCost = 0;
+
+	bool operator==(const FShipComponentProperty& Other) const
+	{
+		return ComponentName == Other.ComponentName;
+	}
 };
 
 // Turret component
 USTRUCT(BlueprintType, DisplayName = "Turret Component")
-struct FTurretComponent : public FShipComponents
+struct FTurretComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
 
-	// Turret fire rate
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float FireRate = 0.f;
+	// Projectile property
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FProjectileProperty ProjectileProperty;
 
-	// Turret damage
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Damage = 0.f;
+	// Execute Property
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UExecuteProperty> ExecuteProperty;
 
+	// Turret shoot cooldown
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ShootCooldown = 0.f;
+	
 	// Turret projectile class
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AActor> ProjectileClass = nullptr;
 };
 
 // Engine component
 USTRUCT(BlueprintType, DisplayName = "Engine Component")
-struct FEngineComponent : public FShipComponents
+struct FEngineComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
 		
 	// Engine acceleration force
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float AccelerationForce = 600000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float AccelerationForce = 0.f;
 
 	// Engine max acceleration
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float MaxAcceleration = 800.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MaxAcceleration = 0.f;
 
 	// Engine acceleration helper range
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float AccelerationHelperRange = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float AccelerationHelperRange = 0.f;
 
 	// Boost when velocity is out of range of "InputBoostRange"
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AccelerationMultiplier = 1.0f;
 
 	// Boost when velocity is in range of "InputBoostRange"
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AccelerationHelperMultiplier = 2.0f;
 
 	// Engine turn speed force
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float TurnSpeedForce = 200000.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float TurnSpeedForce = 0.0f;
 
 	// Engine turn speed multiplier
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TurnSpeedMultiplier = 1.0f;
 
 	// Engine movement property
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FShipMovementProperty MovementProperty;
 	
 	bool bCanTurn = true;
@@ -112,49 +154,17 @@ struct FEngineComponent : public FShipComponents
 
 // Hull component
 USTRUCT(BlueprintType, DisplayName = "Hull Component")
-struct FHullComponent : public FShipComponents
+struct FHullComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
 
 	// Hull health
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Health = 0.f;
 
 	// Hull mass
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Mass = 0.f;
-};
-
-/** Projectile Property */
-USTRUCT(BlueprintType, DisplayName = "Projectile Property")
-struct FProjectileProperty
-{
-	GENERATED_BODY()
-
-	// Projectile damage
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Damage = 0.f;
-
-	// Projectile speed
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Speed = 0.f;
-
-	// Projectile impact impulse
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float ImpactImpulse = 0.f;
-
-	/** vfx/sfx */
-	// Projectile impact effect
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UNiagaraSystem* ImpactEffect = nullptr;
-
-	// Projectile hit sound
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	USoundBase* HitSound = nullptr;
-
-	// Projectile no hit sound
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	USoundBase* NoHitSound = nullptr;
 };
 
 /** Ship property */
@@ -164,28 +174,28 @@ struct  FShipProperty : public FTableRowBase
 	GENERATED_BODY()
 
 	// Name of the ship
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString Name = "";
 
 	// Color of the ship
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FLinearColor Color = FLinearColor::Blue;
 
 	// Movement property
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FShipMovementProperty MovementProperty;
 
 	// Hull component
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FHullComponent HullComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FHullComponentProperty HullComponent;
 
 	// Engine component
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FEngineComponent EngineComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FEngineComponentProperty EngineComponent;
 
 	// Turret component
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FTurretComponent TurretComponent;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FTurretComponentProperty TurretComponent;
 };
 
 /**

@@ -15,6 +15,7 @@
 #include "ShipBase.generated.h"
 
 class UNiagaraSystem;
+class UExecuteProperty;
 
 UCLASS()
 class OCEANITYGAME_API AShipBase : public ACharacterBase
@@ -46,12 +47,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* Turret;
+	
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ShipBody;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ShipCabin;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* Engine;
 	
 	/** Enhanced Movement*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
@@ -73,7 +78,7 @@ public:
 	UInputAction* LookAction;
 
 	/** Ship property */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "_Ship")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "_Ship")
 	FShipProperty ShipProperty;
 
 protected:
@@ -89,6 +94,8 @@ protected:
 
 	UPROPERTY(Replicated)
 	FRotator AimRotation;
+
+	UExecuteProperty* TurretExecuteProperty;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions")
 	ECameraState CameraState = ECameraState::Outside;
@@ -112,16 +119,18 @@ protected:
 	// Camera sensitivity multiplayer scoped
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions|Sensitivity")
 	float CamSensitivityMultiplier_Scoped = 0.1f;
-
-	// Muzzle flash particle system
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
-	UNiagaraSystem* MuzzleFlash;
-
 	
-	
-protected:
+public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	// Called to overwrite ship stats
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void OverwriteShipStats(FShipProperty NewShipProperty);
+
+	// Called to update ship meshes to all clients
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulti_UpdateShipMeshes(FShipProperty NewShipProperty);
 
 	// Called to change Acceleration
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -172,8 +181,7 @@ protected:
 	/** Functions */
 	// Called to replicate control rotation to clients
 	void CalculateControlRotation();
-
-public:
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -182,6 +190,10 @@ public:
 
 	// Function to replicate variables to clients
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// Muzzle flash particle system
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
+	UNiagaraSystem* MuzzleFlash;
 
 private:
 	UPROPERTY(Replicated)

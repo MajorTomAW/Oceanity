@@ -38,6 +38,8 @@ AShipBase::AShipBase()
 	TurretBase->SetupAttachment(ShipCabin);
 	Turret = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurrentGun"));
 	Turret->SetupAttachment(TurretBase);
+	Engine = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Engine"));
+	Engine->SetupAttachment(ShipBody);
 	
 	ProjectileSpawn = CreateDefaultSubobject<UArrowComponent>(TEXT("ProjectileSpawn"));
 	ProjectileSpawn->SetupAttachment(Turret);
@@ -51,6 +53,7 @@ AShipBase::AShipBase()
 }
 
 // Called when the game starts or when spawned
+
 void AShipBase::BeginPlay()
 {
 	Super::BeginPlay();
@@ -71,6 +74,29 @@ void AShipBase::BeginPlay()
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->SetShowMouseCursor(false);
 	}
+	
+	// Create instance of turret execute property
+	TurretExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty);
+}
+
+void AShipBase::OverwriteShipStats_Implementation(FShipProperty NewShipProperty)
+{
+	ShipProperty = NewShipProperty;
+	NetMulti_UpdateShipMeshes(ShipProperty);
+}
+
+void AShipBase::NetMulti_UpdateShipMeshes_Implementation(FShipProperty NewShipProperty)
+{
+	UStaticMesh* HullMesh = NewShipProperty.HullComponent.ComponentMesh;
+	UStaticMesh* TurretMesh = NewShipProperty.TurretComponent.ComponentMesh;
+	UStaticMesh* EngineMesh = NewShipProperty.EngineComponent.ComponentMesh;
+
+	ShipBody->SetStaticMesh(HullMesh);
+	ShipBody->SetMassOverrideInKg(NAME_None, NewShipProperty.HullComponent.Mass);
+	TurretBase->AttachToComponent(ShipCabin, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("TurretSocket"));
+	Turret->SetStaticMesh(TurretMesh);
+	Engine->SetStaticMesh(EngineMesh);
+	Engine->AttachToComponent(ShipBody, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("EngineSocket"));
 }
 
 /** Enhanced Movement */
@@ -83,7 +109,7 @@ void AShipBase::Move(const FInputActionValue& Value)
 void AShipBase::Server_Move_Implementation(FVector2D InputValue)
 {
 	const float Velocity = GetVelocity().Length();
-	const FEngineComponent EngineComponent = ShipProperty.EngineComponent;
+	const FEngineComponentProperty EngineComponent = ShipProperty.EngineComponent;
 	
 	// Acceleration
 	if (EngineComponent.bCanAccelerate && Velocity <= EngineComponent.MaxAcceleration && InputValue.Y != 0)
@@ -114,11 +140,11 @@ void AShipBase::Server_Move_Implementation(FVector2D InputValue)
 	// Turning
 	if (EngineComponent.bCanTurn && Velocity != 0.f && InputValue.X != 0)
 	{
-		const UArrowComponent* Engine = InputValue.X == 1.f ? EngineLeft : EngineRight;
+		const UArrowComponent* ActiveEngine = InputValue.X == 1.f ? EngineLeft : EngineRight;
 		const FVector Force = GetActorForwardVector() * GetWorld()->DeltaTimeSeconds * 100 * EngineComponent.TurnSpeedForce * EngineComponent.TurnSpeedMultiplier;
 
 		// Add force to the engine to achieve a turning movement
-		GetCapsuleComponent()->AddForceAtLocation(Force, Engine->GetComponentLocation());
+		GetCapsuleComponent()->AddForceAtLocation(Force, ActiveEngine->GetComponentLocation());
 		UE_LOG(LogTemp, Warning, TEXT("Force: %f"), Force.Length());
 	}
 }
@@ -200,31 +226,23 @@ void AShipBase::Shoot()
 
 void AShipBase::Server_ShootProjectile_Implementation()
 {
-	// Projectile spawn init
-	const FVector SpawnLocation = ProjectileSpawn->GetComponentLocation();
-	const FRotator SpawnRotation = ProjectileSpawn->GetComponentRotation();
-	FActorSpawnParameters SpawnParameters;
-	SpawnParameters.Owner = this;
-	SpawnParameters.Instigator = GetInstigator();
-	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	// Spawn projectile
-	const FTurretComponent TurretComponent = ShipProperty.TurretComponent;
-	if (AActor* Projectile = GetWorld()->SpawnActor<AActor>(TurretComponent.ProjectileClass, SpawnLocation, SpawnRotation, SpawnParameters))
-	{
-		// Set projectile info
-		if (AProjectileBase* ProjectileBase = Cast<AProjectileBase>(Projectile))
-		{
-			ProjectileBase->ProjectileProperty.Damage = TurretComponent.Damage;
-			NetMulti_SpawnParticleSystem(MuzzleFlash, SpawnLocation, SpawnRotation);
-		}
-	}
+	bool bSuccess = false;
+	TurretExecuteProperty->ExecuteProperty(this, bSuccess);
 }
 
 void AShipBase::NetMulti_SpawnParticleSystem_Implementation(UNiagaraSystem* ParticleSystem, FVector Location, FRotator Rotation)
 {
-	// Spawn particle system
-	UNiagaraFunctionLibrary::SpawnSystemAttached(MuzzleFlash, ProjectileSpawn, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		if (CameraState == ECameraState::Outside)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAttached(MuzzleFlash, ProjectileSpawn, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);
+		}
+	}
+	else
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(MuzzleFlash, ProjectileSpawn, NAME_None, FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);	
+	}
 }
 
 void AShipBase::Aim()
@@ -400,6 +418,7 @@ void AShipBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AShipBase, CurrentVelocity);
 	DOREPLIFETIME(AShipBase, InputVelocity);
 	DOREPLIFETIME(AShipBase, bAiming);
+	DOREPLIFETIME(AShipBase, ShipProperty);
 	DOREPLIFETIME_CONDITION(AShipBase, AimRotation, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Outside, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Scoped, COND_SkipOwner);
