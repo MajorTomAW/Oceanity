@@ -140,6 +140,10 @@ struct FEngineComponentProperty : public FShipComponentProperty
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TurnSpeedForce = 0.0f;
 
+	// Engine max turn speed force
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MaxTurnSpeed = 0.0f;
+
 	// Engine turn speed multiplier
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TurnSpeedMultiplier = 1.0f;

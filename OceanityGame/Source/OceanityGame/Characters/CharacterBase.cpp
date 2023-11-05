@@ -13,6 +13,7 @@ ACharacterBase::ACharacterBase()
 	SetReplicates(true);
 	bReplicates = true;
 	GetCharacterMovement()->SetIsReplicated(true);
+	bAsyncPhysicsTickEnabled = true;
 
 	// Disable control rotation
 	bUseControllerRotationPitch = false;

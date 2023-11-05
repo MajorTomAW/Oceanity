@@ -5,10 +5,8 @@
 #include "CoreMinimal.h"
 #include "OceanityGame/Libraries/ShipLibrary.h"
 #include "InputMappingContext.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/ArrowComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "OceanityGame/Characters/CharacterBase.h"
@@ -32,12 +30,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UCameraComponent* Camera;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UArrowComponent* EngineLeft;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UArrowComponent* EngineRight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UArrowComponent* ProjectileSpawn;
@@ -132,10 +124,6 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void NetMulti_UpdateShipMeshes(FShipProperty NewShipProperty);
 
-	// Called to change Acceleration
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_ChangeAcceleration(float MaxAcceleration, float AccelerationForce);
-
 	// Called to change if player is aiming or not
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_ChangeAiming(bool bNewAiming);
@@ -159,8 +147,6 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_Move(FVector2D InputValue);
-
-	void CalculateVelocity(float Value);
 
 	/** Input Actions */
 	void Shoot();
