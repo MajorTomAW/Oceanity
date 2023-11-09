@@ -3,14 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AdvancedFriendsGameInstance.h"
 #include "OceanityInstance.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class OCEANITYGAME_API UOceanityInstance : public UAdvancedFriendsGameInstance
+class OCEANITYGAME_API UOceanityInstance : public UGameInstance
 {
 	GENERATED_BODY()
 };
