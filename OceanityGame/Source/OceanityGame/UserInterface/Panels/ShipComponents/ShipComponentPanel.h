@@ -26,8 +26,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* ComponentName;
-	
-	virtual void NativeConstruct() override;
 
-	void LinkShipComponent(const FShipComponentProperty* ShipComponentProperty);
+	void LinkShipComponent(const FShipComponentProperty* NewShipComponentProperty);
+	void ComparePrice(int32 Gold);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void SetIsComponentOwned(bool bOwned);
+
+protected:
+	virtual void NativeConstruct() override;
+	FShipComponentProperty* ShipComponentProperty;
 };

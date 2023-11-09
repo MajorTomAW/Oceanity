@@ -6,6 +6,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "Components/CapsuleComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "OceanityGame/GameObjects/Projectiles/ProjectileBase.h"
 #include "OceanityGame/Interfaces/ControllerInterface.h"
@@ -28,25 +32,29 @@ AShipBase::AShipBase()
 
 	// Cabin
 	ShipCabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipCabin"));
-	ShipCabin->SetMassOverrideInKg(NAME_None, 0.f);
+	ShipCabin->BodyInstance.bOverrideMass = true;
+	ShipCabin->BodyInstance.SetMassOverride(0.f);
 	ShipCabin->SetCollisionProfileName(TEXT("NoCollision"), false);
 	ShipCabin->SetupAttachment(ShipBody, TEXT("CabinSocket"));
 
 	// Turret Base
 	TurretBase = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
-	TurretBase->SetMassOverrideInKg(NAME_None, 0.f);
+	TurretBase->BodyInstance.bOverrideMass = true;
+	TurretBase->BodyInstance.SetMassOverride(0.f);
 	TurretBase->SetCollisionProfileName(TEXT("NoCollision"), false);
 	TurretBase->SetupAttachment(ShipCabin, TEXT("TurretSocket"));
 
 	// Turret
 	Turret = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TurrentGun"));
-	Turret->SetMassOverrideInKg(NAME_None, 0.f);
+	Turret->BodyInstance.bOverrideMass = true;
+	Turret->BodyInstance.SetMassOverride(0.f);
 	Turret->SetCollisionProfileName(TEXT("NoCollision"), false);
 	Turret->SetupAttachment(TurretBase, TEXT("TurretSocket"));
 
 	// Engine
 	Engine = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Engine"));
-	Engine->SetMassOverrideInKg(NAME_None, 0.f);
+	Engine->BodyInstance.bOverrideMass = true;
+	Engine->BodyInstance.SetMassOverride(0.f);
 	Engine->SetCollisionProfileName(TEXT("NoCollision"), false);
 	Engine->SetupAttachment(ShipBody);
 	
@@ -55,7 +63,7 @@ AShipBase::AShipBase()
 
 	/** Camera logic */
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Spring Arm"));
-	SpringArm->SetupAttachment(Turret);
+	SpringArm->SetupAttachment(Turret, TEXT("CameraSocket"));
 	SpringArm->TargetArmLength = 1200.f ;
 	SpringArm->bUsePawnControlRotation = true;
 	
@@ -65,6 +73,13 @@ AShipBase::AShipBase()
 
 	// Add Ship tag
 	Tags.Add("Ship");
+
+	// Store all ship meshes
+	ShipMeshes.Add(Engine);
+	ShipMeshes.Add(ShipCabin);
+	ShipMeshes.Add(TurretBase);
+	ShipMeshes.Add(Turret);
+	ShipMeshes.Add(ShipBody);
 }
 
 // Called when the game starts or when spawned
@@ -89,9 +104,6 @@ void AShipBase::BeginPlay()
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->SetShowMouseCursor(false);
 	}
-	
-	// Create instance of turret execute property
-	TurretExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty);
 }
 
 void AShipBase::OverwriteShipStats_Implementation(FShipProperty NewShipProperty)
@@ -107,38 +119,103 @@ void AShipBase::NetMulti_UpdateShipMeshes_Implementation(FShipProperty NewShipPr
 	UStaticMesh* EngineMesh = NewShipProperty.EngineComponent.ComponentMesh;
 
 	ShipBody->SetStaticMesh(HullMesh);
-	ShipBody->SetMassOverrideInKg(NAME_None, NewShipProperty.HullComponent.Mass);
+	ShipBody->BodyInstance.bOverrideMass = true;
+	ShipBody->BodyInstance.SetMassOverride(0.f);
+	
 	ShipCabin->AttachToComponent(ShipBody, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("CabinSocket"));
+	
 	TurretBase->AttachToComponent(ShipCabin, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("TurretSocket"));
+	
 	Turret->SetStaticMesh(TurretMesh);
 	Turret->AttachToComponent(TurretBase, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("TurretSocket"));
+	
 	Engine->SetStaticMesh(EngineMesh);
 	Engine->AttachToComponent(ShipBody, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("EngineSocket"));
+	
 	SpringArm->AttachToComponent(Turret, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("CameraSocket"));
+
+	// Apply new color
+	for (UStaticMeshComponent* MeshComponent : ShipMeshes)
+	{
+		UMaterialInstanceDynamic* DynamicMaterialInst = UMaterialInstanceDynamic::Create(MeshComponent->GetMaterial(0), this);
+
+		TMap<FMaterialParameterInfo, FMaterialParameterMetadata>& OutMaterial = *new TMap<FMaterialParameterInfo, FMaterialParameterMetadata>();
+		DynamicMaterialInst->GetAllParametersOfType(EMaterialParameterType::Vector, OutMaterial);
+
+		// Check if the OutMaterials has a parameter called "Color"
+		if (DynamicMaterialInst == nullptr || !OutMaterial.Find(FMaterialParameterInfo(TEXT("Color"))))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s does not have a parameter called 'Color'"), *MeshComponent->GetStaticMesh()->GetName());
+			continue;
+		}
+		
+		DynamicMaterialInst->SetVectorParameterValue(TEXT("Color"), NewShipProperty.Color);
+		MeshComponent->SetMaterial(0, DynamicMaterialInst);
+	}
 }
 
 /** Enhanced Movement */
 // Movement
-void AShipBase::Move(const FInputActionValue& Value)
+void AShipBase::Turn(const FInputActionValue& Value)
 {
-	Server_Move(Value.Get<FVector2d>());
+	AddControllerYawInput(Value.Get<float>() * (ShipProperty.EngineComponent.TurnSpeedForce / 100) * ShipProperty.EngineComponent.TurnSpeedMultiplier * GetWorld()->GetDeltaSeconds() * 100);
+}
+
+void AShipBase::Accelerate(const FInputActionValue& Value)
+{
+	if (Value.Get<float>() != 0) CalculateAcceleration(Value.Get<float>() * GetWorld()->GetDeltaSeconds() * 100);
+}
+
+void AShipBase::CalculateAcceleration(float Value)
+{
+	if (GetLocalRole() != ROLE_Authority)
+	{
+		Server_CalculateAcceleration(Value);
+	}
+	
+	// Calculate velocity
+	const float TempVel = CurrentVelocity + (Value * ShipProperty.EngineComponent.Acceleration * GetWorld()->GetDeltaSeconds());
+
+	// Clamp velocity
+	CurrentVelocity = FMath::Clamp(TempVel, -ShipProperty.EngineComponent.MaxAcceleration, ShipProperty.EngineComponent.MaxAcceleration);
+
+	// Zero Buffer
+	if (CurrentVelocity < ZeroBuffer && CurrentVelocity > -ZeroBuffer)
+	{
+		InputVelocity = 0.f;
+	}
+	else
+	{
+		CurrentVelocity > 0.f ? InputVelocity = 1.f : InputVelocity = -1.f;
+	}
+
+	// Apply new max walk speed
+	const float NewMaxSpeed = FMath::Abs(CurrentVelocity < 0.f ? CurrentVelocity * BackwardsMultiplier : CurrentVelocity);
+	GetCharacterMovement()->MaxWalkSpeed = NewMaxSpeed;
+
+	// Debug print out CurrentVelocity and InputVelocity
+	UE_LOG(LogTemp, Warning, TEXT("CurrentVelocity: %f, InputVelocity: %f"), GetCharacterMovement()->GetMaxSpeed(), InputVelocity);
+}
+
+void AShipBase::Server_CalculateAcceleration_Implementation(float Value)
+{
+	CalculateAcceleration(Value);
 }
 
 void AShipBase::Server_Move_Implementation(FVector2D InputValue)
 {
 	const float Velocity = GetVelocity().Length();
-	const float AngularVelocity = GetCapsuleComponent()->GetPhysicsAngularVelocityInDegrees().Length();
 	const FEngineComponentProperty EngineComponent = ShipProperty.EngineComponent;
 	
 	const FVector ForceDirection = FVector(GetActorForwardVector().X, GetActorForwardVector().Y, 0.f);
-	const FVector Torque = ForceDirection * -InputValue.X * GetWorld()->DeltaTimeSeconds * 100 * EngineComponent.TurnSpeedForce * EngineComponent.TurnSpeedMultiplier;
 
-	// Turning
+
+	/** Turning 
 	if (EngineComponent.bCanTurn && AngularVelocity <= EngineComponent.MaxTurnSpeed && InputValue.X != 0)
 	{
 		// Physics based rotation for this ship
 		GetCapsuleComponent()->AddTorqueInDegrees(Torque, NAME_None, true);
-	}
+	}*/
 
 	// Acceleration
 	if (EngineComponent.bCanAccelerate && Velocity <= EngineComponent.MaxAcceleration && InputValue.Y != 0)
@@ -156,7 +233,7 @@ void AShipBase::Server_Move_Implementation(FVector2D InputValue)
 			ForceMultiplier = EngineComponent.AccelerationMultiplier;
 		}
 		
-		ForceMultiplier *= EngineComponent.AccelerationForce;
+		ForceMultiplier *= EngineComponent.Acceleration;
 		const FVector ForceLocation = GetCapsuleComponent()->GetCenterOfMass();
 		const FVector Force = ForceDirection * InputValue.Y * GetWorld()->DeltaTimeSeconds * 100 * ForceMultiplier;
 
@@ -168,6 +245,7 @@ void AShipBase::Server_Move_Implementation(FVector2D InputValue)
 void AShipBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	AddMovementInput(GetActorForwardVector(), InputVelocity);
 }
 
 // Camera look
@@ -189,8 +267,8 @@ void AShipBase::Look(const FInputActionValue& Value)
 		break;
 	}
 	
-	AddControllerPitchInput(Value.Get<FVector2d>().Y * Multiplier);
-	AddControllerYawInput(Value.Get<FVector2d>().X * Multiplier);
+	const FRotator NewLookRotation = FRotator(Value.Get<FVector2d>().Y * -1.f * Multiplier, Value.Get<FVector2d>().X * Multiplier, 0.f);
+	SpringArm->AddRelativeRotation(NewLookRotation);
 }
 
 // Aiming
@@ -210,8 +288,10 @@ void AShipBase::Shoot()
 
 void AShipBase::Server_ShootProjectile_Implementation()
 {
-	bool bSuccess = false;
-	TurretExecuteProperty->ExecuteProperty(this, bSuccess);
+	if (UExecuteProperty* ExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty))
+	{
+		ExecuteProperty->ExecuteProperty(this);	
+	}
 }
 
 void AShipBase::NetMulti_SpawnParticleSystem_Implementation(UNiagaraSystem* ParticleSystem, FVector Location, FRotator Rotation)
@@ -281,7 +361,7 @@ void AShipBase::ToggleView()
 
 void AShipBase::HandleToggleView(bool bInside)
 {
-	// Client
+	// Client hide turret for better aiming
 	Client_HideTurret(bInside);
 	
 	// Call show scope ui interface
@@ -296,24 +376,24 @@ void AShipBase::HandleToggleView(bool bInside)
 	{
 		if (GetLocalRole() != ROLE_SimulatedProxy)
 		{
-			SavedControlRotation_Outside = GetControlRotation();
+			SavedControlRotation_Outside = SpringArm->GetRelativeRotation();
 
 			// Set turret rotation to current control rotation yaw but keep pitch
 			const float TurretYawRotation = SavedControlRotation_Outside.Yaw;
-			Turret->SetWorldRotation(FRotator(Turret->GetComponentRotation().Pitch, TurretYawRotation, 0.f));
-			GetController()->SetControlRotation(FRotator(Turret->GetComponentRotation().Pitch, TurretYawRotation, 0.f));
+			Turret->SetWorldRotation(FRotator(Turret->GetRelativeRotation().Pitch, TurretYawRotation, 0.f));
+			TurretBase->SetWorldRotation(FRotator(0.f, TurretYawRotation, 0.f));
 		}
 	}
 	else
 	{
 		if (GetLocalRole() != ROLE_SimulatedProxy)
 		{
-			SavedControlRotation_Scoped = GetControlRotation();
+			SavedControlRotation_Scoped = SpringArm->GetRelativeRotation();
 
 			// Set control rotation to current turret rotation but only use yaw
-			FRotator ControlRotation = SavedControlRotation_Outside;
-			ControlRotation.Yaw = Turret->GetComponentRotation().Yaw;
-			GetController()->SetControlRotation(ControlRotation);
+			FRotator ControlRotation = SpringArm->GetRelativeRotation();
+			ControlRotation.Pitch = SavedControlRotation_Outside.Pitch;
+			SpringArm->SetWorldRotation(ControlRotation);
 		}
 	}
 
@@ -335,15 +415,17 @@ void AShipBase::CalculateControlRotation()
 	// Client prediction
 	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		TurretBase->SetWorldRotation(FRotator(0.f, GetControlRotation().Yaw, 0.f));
-		Turret->SetWorldRotation(FRotator(GetControlRotation().Pitch, GetControlRotation().Yaw, 0.f));
+		const FRotator LookRotation = SpringArm->GetRelativeRotation();
+		TurretBase->SetWorldRotation(FRotator(0.f, LookRotation.Yaw, 0.f));
+		Turret->SetWorldRotation(FRotator(LookRotation.Pitch, LookRotation.Yaw, 0.f));
+		UKismetSystemLibrary::PrintString(GetWorld(), FString::Printf(TEXT("LookRotation: %s"), *LookRotation.ToString()));
 	}
-	
-	// Replicate the rotation to the server
+
+	// Replicate to all clients
 	if (GetLocalRole() != ROLE_SimulatedProxy)
 	{
-		AimRotation = GetControlRotation();
-		Server_ChangeTurretRotation(AimRotation);
+		const FRotator LookRotation = SpringArm->GetRelativeRotation();
+		Server_ChangeTurretRotation(LookRotation);
 	}
 }
 
@@ -371,8 +453,8 @@ void AShipBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AShipBase::Move);
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this, &AShipBase::Move);
+		EnhancedInputComponent->BindAction(TurnAction, ETriggerEvent::Triggered, this, &AShipBase::Turn);
+		EnhancedInputComponent->BindAction(AccelerateAction, ETriggerEvent::Triggered, this, &AShipBase::Accelerate);
 
 		// Shooting
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AShipBase::Shoot);

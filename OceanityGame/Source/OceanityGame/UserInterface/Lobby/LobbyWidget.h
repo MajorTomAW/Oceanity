@@ -6,8 +6,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/ScrollBox.h"
 #include "OceanityGame/Libraries/UILibrary.h"
+#include "OceanityGame/PlayerStates/Lobby/LobbyPlayerState.h"
 #include "LobbyWidget.generated.h"
-
 
 class UShipComponentPanel;
 /**
@@ -32,7 +32,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetActiveComponentLayout(EActiveComponentLayout NewActiveComponentLayout);
 
-	void UpdateListedComponents(UDataTable* ComponentTable);
+	void UpdateListedComponents(UDataTable* ComponentTable, EActiveComponentLayout ComponentType);
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Data")
@@ -46,4 +46,6 @@ public:
 
 private:
 	EActiveComponentLayout ActiveComponentLayout = EActiveComponentLayout::TurretComponents;
+
+	ALobbyPlayerState* LobbyPlayerState;
 };

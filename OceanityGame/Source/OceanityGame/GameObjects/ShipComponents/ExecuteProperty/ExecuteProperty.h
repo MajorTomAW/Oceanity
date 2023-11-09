@@ -18,5 +18,5 @@ class OCEANITYGAME_API UExecuteProperty : public UObject
 
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "ExecuteProperty")
-	void ExecuteProperty(AShipBase* Parent, bool &Success);
+	void ExecuteProperty(AShipBase* Parent);
 };

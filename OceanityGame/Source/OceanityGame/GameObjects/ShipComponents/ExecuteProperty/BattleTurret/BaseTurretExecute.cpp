@@ -6,9 +6,9 @@
 #include "OceanityGame/Characters/Ships/ShipBase.h"
 #include "OceanityGame/GameObjects/Projectiles/ProjectileBase.h"
 
-void UBaseTurretExecute::ExecuteProperty_Implementation(AShipBase* Parent, bool& Success)
+void UBaseTurretExecute::ExecuteProperty_Implementation(AShipBase* Parent)
 {
-	Super::ExecuteProperty_Implementation(Parent, Success);
+	Super::ExecuteProperty_Implementation(Parent);
 
 	// Spawn parameters
 	const FVector SpawnLocation = Parent->ProjectileSpawn->GetComponentLocation();
@@ -25,7 +25,7 @@ void UBaseTurretExecute::ExecuteProperty_Implementation(AShipBase* Parent, bool&
 		// Set projectile info
 		if (AProjectileBase* ProjectileBase = Cast<AProjectileBase>(Projectile))
 		{
-			ProjectileBase->ProjectileProperty = TurretComponent.ProjectileProperty;
+			ProjectileBase->SetProjectileProperty(TurretComponent.ProjectileProperty);
 			Parent->NetMulti_SpawnParticleSystem(Parent->MuzzleFlash, SpawnLocation, SpawnRotation);
 		}
 	}

@@ -36,15 +36,26 @@ AProjectileBase::AProjectileBase()
 	InitialLifeSpan = 10.f;
 }
 
+void AProjectileBase::SetProjectileProperty(const FProjectileProperty& NewProjectileProperty)
+{
+	ProjectileProperty = NewProjectileProperty;
+
+	// Set Projectile speed etc
+	ProjectileMovement->SetActive(false);
+	ProjectileMovement->InitialSpeed = ProjectileProperty.Speed;
+	ProjectileMovement->MaxSpeed = ProjectileProperty.Speed;
+	ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileProperty.Speed;
+	ProjectileMovement->SetActive(true, true);
+
+	UE_LOG(LogTemp, Warning, TEXT("New Projectile Property: %f"), ProjectileProperty.Speed);
+}
+
 void AProjectileBase::BeginPlay()
 {
 	Super::BeginPlay();
 
 	// Bind delegate to ProjectileHitbox overlapping event
 	ProjectileHitbox->OnComponentBeginOverlap.AddDynamic(this, &AProjectileBase::OnProjectileHitboxOverlap);
-
-	ProjectileMovement->InitialSpeed = ProjectileProperty.Speed;
-	ProjectileMovement->MaxSpeed = ProjectileProperty.Speed;
 }
 
 void AProjectileBase::OnProjectileHitboxOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -69,7 +80,7 @@ void AProjectileBase::OnProjectileHitboxOverlap(UPrimitiveComponent* OverlappedC
 		
 		// AddForceAtLocation to the CapsuleComponent of TargetActor in direction the projectile was coming from
 		const AShipBase* TargetActor = Cast<AShipBase>(OtherActor);
-		TargetActor->GetCapsuleComponent()->AddForceAtLocation(GetActorForwardVector() * ProjectileProperty.ImpactImpulse, SweepResult.ImpactPoint);
+		TargetActor->GetCapsuleComponent()->AddForceAtLocation(ProjectileProperty.ImpactImpulse * GetVelocity(), SweepResult.ImpactPoint);
 		
 		NetMulti_SpawnParticleSystem(ProjectileProperty.ImpactEffect, SweepResult.ImpactPoint);
 		Destroy();

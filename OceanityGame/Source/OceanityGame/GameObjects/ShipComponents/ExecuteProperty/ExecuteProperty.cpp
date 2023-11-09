@@ -6,7 +6,7 @@
 #include "OceanityGame/Characters/Ships/ShipBase.h"
 
 
-void UExecuteProperty::ExecuteProperty_Implementation(AShipBase* Parent, bool& Success)
+void UExecuteProperty::ExecuteProperty_Implementation(AShipBase* Parent)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ExecuteProperty_Implementation"));
+	UE_LOG(LogTemp, Warning, TEXT("ExecuteProperty_Implementation"))
 }

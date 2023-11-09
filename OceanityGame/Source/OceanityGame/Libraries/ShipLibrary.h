@@ -108,6 +108,11 @@ struct FTurretComponentProperty : public FShipComponentProperty
 	// Turret projectile class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AActor> ProjectileClass = nullptr;
+
+	bool operator==(const FTurretComponentProperty& Other) const
+	{
+		return ComponentName == Other.ComponentName;
+	}
 };
 
 // Engine component
@@ -118,7 +123,7 @@ struct FEngineComponentProperty : public FShipComponentProperty
 		
 	// Engine acceleration force
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float AccelerationForce = 0.f;
+	float Acceleration = 0.f;
 
 	// Engine max acceleration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -154,6 +159,11 @@ struct FEngineComponentProperty : public FShipComponentProperty
 	
 	bool bCanTurn = true;
 	bool bCanAccelerate = true;
+
+	bool operator==(const FEngineComponentProperty& Other) const
+	{
+		return ComponentName == Other.ComponentName;
+	}
 };
 
 // Hull component
@@ -169,6 +179,13 @@ struct FHullComponentProperty : public FShipComponentProperty
 	// Hull mass
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Mass = 0.f;
+
+	bool operator==(const FHullComponentProperty& Other) const
+	{
+		return ComponentName == Other.ComponentName &&
+			   Health == Other.Health &&
+			   Mass == Other.Mass;
+	}
 };
 
 /** Ship property */

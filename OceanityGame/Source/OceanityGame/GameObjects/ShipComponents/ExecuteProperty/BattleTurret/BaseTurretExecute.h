@@ -15,5 +15,5 @@ class OCEANITYGAME_API UBaseTurretExecute : public UExecuteProperty
 	GENERATED_BODY()
 
 public:
-	virtual void ExecuteProperty_Implementation(AShipBase* Parent, bool& Success) override;
+	virtual void ExecuteProperty_Implementation(AShipBase* Parent) override;
 };

@@ -55,7 +55,10 @@ public:
 	UInputMappingContext* MovementContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
-	UInputAction* MoveAction;
+	UInputAction* TurnAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
+	UInputAction* AccelerateAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
 	UInputAction* ShootAction;
@@ -78,7 +81,7 @@ protected:
 	UPROPERTY(Replicated)
 	float CurrentVelocity = 0.f;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly, EditAnywhere)
 	float InputVelocity = 0.f;
 
 	UPROPERTY(Replicated)
@@ -86,8 +89,6 @@ protected:
 
 	UPROPERTY(Replicated)
 	FRotator AimRotation;
-
-	UExecuteProperty* TurretExecuteProperty;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions")
 	ECameraState CameraState = ECameraState::Outside;
@@ -141,12 +142,19 @@ public:
 	void NetMulti_SpawnParticleSystem(UNiagaraSystem* ParticleSystem, FVector Location, FRotator Rotation);
 
 	/** Enhanced Movement */
-	void Move(const FInputActionValue& Value);
+	void Turn(const FInputActionValue& Value);
+
+	void Accelerate(const FInputActionValue& Value);
 
 	void Look(const FInputActionValue& Value);
 
 	UFUNCTION(Server, Reliable)
 	void Server_Move(FVector2D InputValue);
+
+	void CalculateAcceleration(float Value);
+
+	UFUNCTION(Server, Reliable)
+	void Server_CalculateAcceleration(float Value);
 
 	/** Input Actions */
 	void Shoot();
@@ -187,4 +195,6 @@ private:
 
 	UPROPERTY(Replicated)
 	FRotator SavedControlRotation_Outside;
+
+	TArray<UStaticMeshComponent*> ShipMeshes;
 };
