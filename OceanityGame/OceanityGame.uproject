@@ -73,6 +73,11 @@
 			"Name": "DLSSMoviePipelineSupport",
 			"Enabled": false,
 			"MarketplaceURL": "https://www.unrealengine.com/marketplace/en-US/product/nvidia-dlss"
+		},
+		{
+			"Name": "IconHandler",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/8ab50c0d12f0427b847a443f8dfd7f94"
 		}
 	]
 }

@@ -117,6 +117,11 @@ public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	virtual void PossessedBy(AController* NewController) override;
+
+	UFUNCTION(Client, Reliable)
+	void Client_EnableShipInput();
+	
 	// Called to overwrite ship stats
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OverwriteShipStats(FShipProperty NewShipProperty);
@@ -159,8 +164,13 @@ public:
 	/** Input Actions */
 	void Shoot();
 
+	void StopShooting();
+
 	UFUNCTION(Server, Reliable)
 	void Server_ShootProjectile();
+
+	UFUNCTION(Server, Reliable)
+	void Server_StopShooting();
 
 	UFUNCTION(Client, Reliable)
 	void Client_HideTurret(bool bHide);
@@ -189,6 +199,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
 	UNiagaraSystem* MuzzleFlash;
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void SetShipProperty(FShipProperty NewShipProperty);
+
 private:
 	UPROPERTY(Replicated)
 	FRotator SavedControlRotation_Scoped;
@@ -197,4 +210,6 @@ private:
 	FRotator SavedControlRotation_Outside;
 
 	TArray<UStaticMeshComponent*> ShipMeshes;
+
+	UExecuteProperty* ExecuteProperty;
 };

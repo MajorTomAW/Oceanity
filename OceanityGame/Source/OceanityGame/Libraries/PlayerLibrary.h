@@ -14,7 +14,10 @@ struct FPlayerInventory
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 Gold = 0;
+	int32 Gold = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString PlayerId = ""; 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FTurretComponentProperty> UnlockedTurretComponents;
@@ -41,4 +44,29 @@ UCLASS()
 class OCEANITYGAME_API UPlayerLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintCallable)
+	static bool IsComponentOwned(const FShipComponentProperty ShipComponentProperty, const FPlayerInventory& PlayerInventory)
+	{
+		switch (ShipComponentProperty.ComponentType)
+		{
+			case EShipComponentType::Engine:
+				return PlayerInventory.UnlockedEngineComponents.ContainsByPredicate([&](const FEngineComponentProperty& EngineComponentProperty)
+				{
+					return EngineComponentProperty.ComponentId == ShipComponentProperty.ComponentId;
+				});
+			case EShipComponentType::Hull:
+				return PlayerInventory.UnlockedHullComponents.ContainsByPredicate([&](const FHullComponentProperty& HullComponentProperty)
+				{
+					return HullComponentProperty.ComponentId == ShipComponentProperty.ComponentId;
+				});
+			case EShipComponentType::Turret:
+				return PlayerInventory.UnlockedTurretComponents.ContainsByPredicate([&](const FTurretComponentProperty& TurretComponentProperty)
+				{
+					return TurretComponentProperty.ComponentId == ShipComponentProperty.ComponentId;
+				});
+		}
+		return false;
+	};
 };

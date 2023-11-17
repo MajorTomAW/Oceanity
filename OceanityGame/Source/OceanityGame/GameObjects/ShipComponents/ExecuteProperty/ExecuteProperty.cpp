@@ -10,3 +10,7 @@ void UExecuteProperty::ExecuteProperty_Implementation(AShipBase* Parent)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ExecuteProperty_Implementation"))
 }
+
+void UExecuteProperty::FinishExecute_Implementation(AShipBase* Parent, bool bCanceled)
+{
+}

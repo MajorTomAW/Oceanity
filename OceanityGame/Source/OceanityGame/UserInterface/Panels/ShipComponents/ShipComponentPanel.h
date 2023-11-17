@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "ShipComponentPanel.generated.h"
 
+class ULobbyWidget;
 struct FShipComponentProperty;
+
 /**
  * 
  */
@@ -27,13 +30,34 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UTextBlock* ComponentName;
 
-	void LinkShipComponent(const FShipComponentProperty* NewShipComponentProperty);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
+	UButton* ComponentButton;
+
+	void LinkShipComponent(const FShipComponentProperty* NewShipComponentProperty, const FName RowName);
 	void ComparePrice(int32 Gold);
+
+	// Set owner
+	UFUNCTION()
+	void SetOwner(ULobbyWidget* NewOwner);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void PanelEnabled(bool bEnabled);
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void SetIsComponentOwned(bool bOwned);
 
+	FShipComponentProperty* GetShipComponentProperty() const {return ShipComponentProperty;}
+
 protected:
 	virtual void NativeConstruct() override;
 	FShipComponentProperty* ShipComponentProperty;
+
+	UFUNCTION()
+	void OnComponentButtonClicked();
+
+private:
+	ULobbyWidget* WidgetOwner;
+
+public:
+	FName ThisRowName;
 };

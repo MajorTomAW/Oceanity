@@ -87,7 +87,16 @@ AShipBase::AShipBase()
 void AShipBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+}
+
+void AShipBase::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	Client_EnableShipInput();
+}
+
+void AShipBase::Client_EnableShipInput_Implementation()
+{
 	// Add input mappings
 	if (const APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
@@ -174,7 +183,7 @@ void AShipBase::CalculateAcceleration(float Value)
 	}
 	
 	// Calculate velocity
-	const float TempVel = CurrentVelocity + (Value * ShipProperty.EngineComponent.Acceleration * GetWorld()->GetDeltaSeconds());
+	const float TempVel = CurrentVelocity + (Value * ShipProperty.EngineComponent.Acceleration * GetWorld()->GetDeltaSeconds() * ShipProperty.HullComponent.HullMovementMultiplier);
 
 	// Clamp velocity
 	CurrentVelocity = FMath::Clamp(TempVel, -ShipProperty.EngineComponent.MaxAcceleration, ShipProperty.EngineComponent.MaxAcceleration);
@@ -190,7 +199,7 @@ void AShipBase::CalculateAcceleration(float Value)
 	}
 
 	// Apply new max walk speed
-	const float NewMaxSpeed = FMath::Abs(CurrentVelocity < 0.f ? CurrentVelocity * BackwardsMultiplier : CurrentVelocity);
+	const float NewMaxSpeed = FMath::Abs(CurrentVelocity < 0.f ? CurrentVelocity * ShipProperty.EngineComponent.BackwardsMultiplier : CurrentVelocity);
 	GetCharacterMovement()->MaxWalkSpeed = NewMaxSpeed;
 
 	// Debug print out CurrentVelocity and InputVelocity
@@ -286,9 +295,22 @@ void AShipBase::Shoot()
 	Server_ShootProjectile();
 }
 
+void AShipBase::StopShooting()
+{
+	Server_StopShooting();
+}
+
+void AShipBase::Server_StopShooting_Implementation()
+{
+	if (IsValid(ExecuteProperty))
+	{
+		ExecuteProperty->FinishExecute(this, false);
+	}
+}
+
 void AShipBase::Server_ShootProjectile_Implementation()
 {
-	if (UExecuteProperty* ExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty))
+	if (IsValid(ExecuteProperty))
 	{
 		ExecuteProperty->ExecuteProperty(this);	
 	}
@@ -458,6 +480,7 @@ void AShipBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 		// Shooting
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AShipBase::Shoot);
+		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &AShipBase::StopShooting);
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AShipBase::Look);
@@ -482,5 +505,12 @@ void AShipBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME_CONDITION(AShipBase, AimRotation, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Outside, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Scoped, COND_SkipOwner);
+}
+
+void AShipBase::SetShipProperty_Implementation(FShipProperty NewShipProperty)
+{
+	ShipProperty = NewShipProperty;
+	NetMulti_UpdateShipMeshes(ShipProperty);
+	ExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty);
 }
 

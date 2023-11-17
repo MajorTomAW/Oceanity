@@ -14,6 +14,33 @@ enum class EActiveComponentLayout : uint8
 	HullComponents
 };
 
+/** UI Button colors */
+const FSlateColor ActiveColor = FSlateColor(FLinearColor(FColor::FromHex("#00668EFF")));
+const FSlateColor InactiveColor = FSlateColor(FLinearColor(FColor::FromHex("#FAF3DD80")));
+const FSlateColor HoveredColor = FSlateColor(FLinearColor(FColor::FromHex("#FAF3DD99")));
+const FSlateColor PressedColor = FSlateColor(FLinearColor(FColor::FromHex("#FAF3DD66")));
+
+/**
+ * Stats struct
+ */
+USTRUCT(BlueprintType)
+struct FComponentStats
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Name = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString Unit = "";
+		
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Value = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MaxValue = 0.f;
+};
+
 /**
  * 
  */

@@ -16,6 +16,14 @@ enum class ECameraState : uint8
 	Scoped
 };
 
+UENUM(BlueprintType)
+enum class EShipComponentType : uint8
+{
+	Turret,
+	Engine,
+	Hull
+};
+
 /** Projectile Property */
 USTRUCT(BlueprintType, DisplayName = "Projectile Property")
 struct FProjectileProperty
@@ -68,6 +76,10 @@ struct FShipComponentProperty : public FTableRowBase
 	// Component name
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString ComponentName = "";
+
+	// Component id must be the same as the row name
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ComponentId = "";
 	
 	// Component icon
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -76,6 +88,10 @@ struct FShipComponentProperty : public FTableRowBase
 	// Component mesh
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UStaticMesh* ComponentMesh = nullptr;
+
+	// Component type
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EShipComponentType ComponentType = EShipComponentType::Turret;
 
 	// Component cost
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -92,6 +108,11 @@ USTRUCT(BlueprintType, DisplayName = "Turret Component")
 struct FTurretComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
+
+	FTurretComponentProperty()
+	{
+		ComponentType = EShipComponentType::Turret;
+	}
 
 	// Projectile property
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -120,6 +141,11 @@ USTRUCT(BlueprintType, DisplayName = "Engine Component")
 struct FEngineComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
+
+	FEngineComponentProperty()
+	{
+		ComponentType = EShipComponentType::Engine;
+	}
 		
 	// Engine acceleration force
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -129,8 +155,11 @@ struct FEngineComponentProperty : public FShipComponentProperty
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MaxAcceleration = 0.f;
 
-	// Engine acceleration helper range
+	// Engine backwards multiplier
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float BackwardsMultiplier = 1.f;
+
+	// Engine acceleration helper range
 	float AccelerationHelperRange = 0.f;
 
 	// Boost when velocity is out of range of "InputBoostRange"
@@ -138,16 +167,11 @@ struct FEngineComponentProperty : public FShipComponentProperty
 	float AccelerationMultiplier = 1.0f;
 
 	// Boost when velocity is in range of "InputBoostRange"
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AccelerationHelperMultiplier = 2.0f;
 
 	// Engine turn speed force
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float TurnSpeedForce = 0.0f;
-
-	// Engine max turn speed force
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MaxTurnSpeed = 0.0f;
 
 	// Engine turn speed multiplier
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -172,6 +196,11 @@ struct FHullComponentProperty : public FShipComponentProperty
 {
 	GENERATED_BODY()
 
+	FHullComponentProperty()
+	{
+		ComponentType = EShipComponentType::Hull;
+	}
+	
 	// Hull health
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Health = 0.f;
@@ -179,6 +208,14 @@ struct FHullComponentProperty : public FShipComponentProperty
 	// Hull mass
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Mass = 0.f;
+
+	// Damage reduction
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DamageReduction = 0.f;
+
+	// Hull movement multiplier
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float HullMovementMultiplier = 1.f;
 
 	bool operator==(const FHullComponentProperty& Other) const
 	{
