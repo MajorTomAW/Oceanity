@@ -30,10 +30,24 @@ AProjectileBase::AProjectileBase()
 	ProjectileParticleSystem = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Niagara Component"));
 	ProjectileParticleSystem->SetupAttachment(RootComponent);
 	
-	SetReplicates(true);
-	SetReplicateMovement(true);
+	bReplicates = true;
+	AActor::SetReplicateMovement(true);
 
 	InitialLifeSpan = 10.f;
+}
+
+void AProjectileBase::SetProjectileProperty(const FProjectileProperty& NewProjectileProperty)
+{
+	ProjectileProperty = NewProjectileProperty;
+
+	// Set Projectile speed etc
+	ProjectileMovement->SetActive(false);
+	ProjectileMovement->InitialSpeed = ProjectileProperty.Speed;
+	ProjectileMovement->MaxSpeed = ProjectileProperty.Speed;
+	ProjectileMovement->Velocity = GetActorForwardVector() * ProjectileProperty.Speed;
+	ProjectileMovement->SetActive(true, true);
+
+	UE_LOG(LogTemp, Warning, TEXT("New Projectile Property: %f"), ProjectileProperty.Speed);
 }
 
 void AProjectileBase::BeginPlay()
@@ -63,26 +77,17 @@ void AProjectileBase::OnProjectileHitboxOverlap(UPrimitiveComponent* OverlappedC
 	{
 		// Apply damage to OtherActor
 		UGameplayStatics::ApplyDamage(OtherActor, ProjectileProperty.Damage, GetInstigatorController(), this, UDamageType::StaticClass());
-
-		// Cast OtherActor to AShipBase
-		const AShipBase* TargetActor = Cast<AShipBase>(OtherActor);
 		
 		// AddForceAtLocation to the CapsuleComponent of TargetActor in direction the projectile was coming from
-		TargetActor->GetCapsuleComponent()->AddForceAtLocation(ProjectileMovement->Velocity * ProjectileProperty.ImpactImpulse * 0.5f, SweepResult.ImpactPoint);
+		const AShipBase* TargetActor = Cast<AShipBase>(OtherActor);
+		TargetActor->GetCapsuleComponent()->AddForceAtLocation(ProjectileProperty.ImpactImpulse * GetVelocity(), SweepResult.ImpactPoint);
 		
-
-		// Spawn impact particle system
 		NetMulti_SpawnParticleSystem(ProjectileProperty.ImpactEffect, SweepResult.ImpactPoint);
-
-		// Destroy projectile
 		Destroy();
 	}
 	else
 	{
-		// Spawn impact particle system
 		NetMulti_SpawnParticleSystem(ProjectileProperty.ImpactEffect, SweepResult.ImpactPoint);
-
-		// Destroy projectile
 		Destroy();
 	}
 }

@@ -38,6 +38,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Projectile")
 	FProjectileProperty ProjectileProperty;
 
+	void SetProjectileProperty(const FProjectileProperty& NewProjectileProperty);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

@@ -5,16 +5,15 @@
 #include "CoreMinimal.h"
 #include "OceanityGame/Libraries/ShipLibrary.h"
 #include "InputMappingContext.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/ArrowComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "OceanityGame/Characters/CharacterBase.h"
 #include "ShipBase.generated.h"
 
 class UNiagaraSystem;
+class UExecuteProperty;
 
 UCLASS()
 class OCEANITYGAME_API AShipBase : public ACharacterBase
@@ -33,12 +32,6 @@ public:
 	UCameraComponent* Camera;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UArrowComponent* EngineLeft;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UArrowComponent* EngineRight;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UArrowComponent* ProjectileSpawn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
@@ -46,19 +39,26 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* Turret;
+	
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ShipBody;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ShipCabin;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* Engine;
 	
 	/** Enhanced Movement*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
 	UInputMappingContext* MovementContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
-	UInputAction* MoveAction;
+	UInputAction* TurnAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
+	UInputAction* AccelerateAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
 	UInputAction* ShootAction;
@@ -73,7 +73,7 @@ public:
 	UInputAction* LookAction;
 
 	/** Ship property */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "_Ship")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "_Ship")
 	FShipProperty ShipProperty;
 
 protected:
@@ -81,7 +81,7 @@ protected:
 	UPROPERTY(Replicated)
 	float CurrentVelocity = 0.f;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly, EditAnywhere)
 	float InputVelocity = 0.f;
 
 	UPROPERTY(Replicated)
@@ -112,20 +112,23 @@ protected:
 	// Camera sensitivity multiplayer scoped
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|DeveloperOptions|Sensitivity")
 	float CamSensitivityMultiplier_Scoped = 0.1f;
-
-	// Muzzle flash particle system
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
-	UNiagaraSystem* MuzzleFlash;
-
 	
-	
-protected:
+public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// Called to change Acceleration
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_ChangeAcceleration(float MaxAcceleration, float AccelerationForce);
+	virtual void PossessedBy(AController* NewController) override;
+
+	UFUNCTION(Client, Reliable)
+	void Client_EnableShipInput();
+	
+	// Called to overwrite ship stats
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void OverwriteShipStats(FShipProperty NewShipProperty);
+
+	// Called to update ship meshes to all clients
+	UFUNCTION(NetMulticast, Reliable)
+	void NetMulti_UpdateShipMeshes(FShipProperty NewShipProperty);
 
 	// Called to change if player is aiming or not
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -144,20 +147,30 @@ protected:
 	void NetMulti_SpawnParticleSystem(UNiagaraSystem* ParticleSystem, FVector Location, FRotator Rotation);
 
 	/** Enhanced Movement */
-	void Move(const FInputActionValue& Value);
+	void Turn(const FInputActionValue& Value);
+
+	void Accelerate(const FInputActionValue& Value);
 
 	void Look(const FInputActionValue& Value);
 
 	UFUNCTION(Server, Reliable)
 	void Server_Move(FVector2D InputValue);
 
-	void CalculateVelocity(float Value);
+	void CalculateAcceleration(float Value);
+
+	UFUNCTION(Server, Reliable)
+	void Server_CalculateAcceleration(float Value);
 
 	/** Input Actions */
 	void Shoot();
 
+	void StopShooting();
+
 	UFUNCTION(Server, Reliable)
 	void Server_ShootProjectile();
+
+	UFUNCTION(Server, Reliable)
+	void Server_StopShooting();
 
 	UFUNCTION(Client, Reliable)
 	void Client_HideTurret(bool bHide);
@@ -172,8 +185,7 @@ protected:
 	/** Functions */
 	// Called to replicate control rotation to clients
 	void CalculateControlRotation();
-
-public:
+	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -183,10 +195,21 @@ public:
 	// Function to replicate variables to clients
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// Muzzle flash particle system
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Particles")
+	UNiagaraSystem* MuzzleFlash;
+
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void SetShipProperty(FShipProperty NewShipProperty);
+
 private:
 	UPROPERTY(Replicated)
 	FRotator SavedControlRotation_Scoped;
 
 	UPROPERTY(Replicated)
 	FRotator SavedControlRotation_Outside;
+
+	TArray<UStaticMeshComponent*> ShipMeshes;
+
+	UExecuteProperty* ExecuteProperty;
 };
