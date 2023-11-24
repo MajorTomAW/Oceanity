@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OceanityGame/Libraries/ShipLibrary.h"
 #include "InputMappingContext.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
+#include "OceanityGame/AbilitySystem/AttributeSet/ShipAttributeSet.h"
 #include "OceanityGame/Characters/CharacterBase.h"
 #include "ShipBase.generated.h"
 
@@ -71,10 +71,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "_Ship|Input")
 	UInputAction* LookAction;
-
-	/** Ship property */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category = "_Ship")
-	FShipProperty ShipProperty;
 
 protected:
 	/** Values */
@@ -202,6 +198,9 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void SetShipProperty(FShipProperty NewShipProperty);
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnShipPropertyUpdated(FShipProperty NewShipProperty);
+
 private:
 	UPROPERTY(Replicated)
 	FRotator SavedControlRotation_Scoped;
@@ -210,6 +209,4 @@ private:
 	FRotator SavedControlRotation_Outside;
 
 	TArray<UStaticMeshComponent*> ShipMeshes;
-
-	UExecuteProperty* ExecuteProperty;
 };

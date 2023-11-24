@@ -1,4 +1,4 @@
-// Copyright © 2023 MajorT, Shimizu Izumi. All rights reserved.
+// Copyright © 2023 MajorT. All rights reserved.
 
 #pragma once
 
@@ -28,5 +28,5 @@ private:
 	FComponentStats ComponentStats;
 
 public:
-	void LinkComponentStats(const FComponentStats& Stats);
+	void LinkComponentStats(FComponentStats Stats);
 };

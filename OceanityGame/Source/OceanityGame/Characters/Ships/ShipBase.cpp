@@ -11,8 +11,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "OceanityGame/Components/AbilityComponent/OceanityAbilityComponent.h"
 #include "OceanityGame/GameObjects/Projectiles/ProjectileBase.h"
 #include "OceanityGame/Interfaces/ControllerInterface.h"
+
+class UExecuteProperty;
 
 // Sets default values
 AShipBase::AShipBase()
@@ -302,17 +305,16 @@ void AShipBase::StopShooting()
 
 void AShipBase::Server_StopShooting_Implementation()
 {
-	if (IsValid(ExecuteProperty))
-	{
-		ExecuteProperty->FinishExecute(this, false);
-	}
+	//OceanityAbilityCompone
 }
 
 void AShipBase::Server_ShootProjectile_Implementation()
 {
-	if (IsValid(ExecuteProperty))
+	if (OceanityAbilityComponent)
 	{
-		ExecuteProperty->ExecuteProperty(this);	
+		FGameplayTagContainer TagContainer;
+		TagContainer.AddTag(FGameplayTag::RequestGameplayTag("Ability.Player.PrimaryFire"));
+		OceanityAbilityComponent->TryActivateAbilitiesByTag(TagContainer);
 	}
 }
 
@@ -501,7 +503,6 @@ void AShipBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(AShipBase, CurrentVelocity);
 	DOREPLIFETIME(AShipBase, InputVelocity);
 	DOREPLIFETIME(AShipBase, bAiming);
-	DOREPLIFETIME(AShipBase, ShipProperty);
 	DOREPLIFETIME_CONDITION(AShipBase, AimRotation, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Outside, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AShipBase, SavedControlRotation_Scoped, COND_SkipOwner);
@@ -511,6 +512,9 @@ void AShipBase::SetShipProperty_Implementation(FShipProperty NewShipProperty)
 {
 	ShipProperty = NewShipProperty;
 	NetMulti_UpdateShipMeshes(ShipProperty);
-	ExecuteProperty = NewObject<UExecuteProperty>(this, ShipProperty.TurretComponent.ExecuteProperty);
+	
+	OnShipPropertyUpdated(ShipProperty);
+
+	//UE_LOG(LogAbilitySystemComponent, Error, TEXT("Health Attribute: %f"), AttributeSet->GetHealth());
 }
 

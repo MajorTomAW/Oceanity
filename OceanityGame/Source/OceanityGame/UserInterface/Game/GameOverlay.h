@@ -34,5 +34,5 @@ public:
 	void ShowScope(bool bShow);
 	
 	UFUNCTION(BlueprintCallable)
-	void UpdateTimer(float Seconds, float Minutes)
+	void UpdateTimer(float Seconds, float Minutes);
 };

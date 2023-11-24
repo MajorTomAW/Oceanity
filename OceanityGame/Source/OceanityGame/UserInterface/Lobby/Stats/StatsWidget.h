@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/ScrollBox.h"
+#include "OceanityGame/UserInterface/Panels/Stats/StatsPanel.h"
 #include "OceanityGame/Libraries/UILibrary.h"
 #include "StatsWidget.generated.h"
 
@@ -22,4 +23,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateStatsList(TArray<FComponentStats> Stats) const;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSubclassOf<UStatsPanel> StatsPanelClass;
 };

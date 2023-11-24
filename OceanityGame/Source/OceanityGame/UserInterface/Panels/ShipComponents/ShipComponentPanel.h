@@ -33,7 +33,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget))
 	UButton* ComponentButton;
 
-	void LinkShipComponent(const FShipComponentProperty* NewShipComponentProperty, const FName RowName);
+	void LinkShipComponent(FShipComponentProperty* NewShipComponentProperty, const FName RowName);
 	void ComparePrice(int32 Gold);
 
 	// Set owner

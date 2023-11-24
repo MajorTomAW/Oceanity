@@ -52,7 +52,6 @@ void UShipComponentPanel::OnComponentButtonClicked()
 				break;
 			}
 		}
-
 		UE_LOG(LogTemp, Warning, TEXT("OnComponentButton Clicked: ComponentStats Updating Now!"));
 		WidgetOwner->StatsWidget->UpdateStatsList(ComponentStats);
 		UE_LOG(LogTemp, Warning, TEXT("OnComponentButton Clicked: Selecting New Component Panel Now!"));
@@ -61,10 +60,10 @@ void UShipComponentPanel::OnComponentButtonClicked()
 	}
 }
 
-void UShipComponentPanel::LinkShipComponent(const FShipComponentProperty* NewShipComponentProperty, const FName RowName)
+void UShipComponentPanel::LinkShipComponent(FShipComponentProperty* NewShipComponentProperty, const FName RowName)
 {
 	ThisRowName = RowName;
-	ShipComponentProperty = const_cast<FShipComponentProperty*>(NewShipComponentProperty);
+	ShipComponentProperty = NewShipComponentProperty;
 	ComponentCost->SetText(FText::FromString(FString::FromInt(ShipComponentProperty->ComponentCost)));
 	ComponentName->SetText(FText::FromString(ShipComponentProperty->ComponentName));
 	ComponentImage->GetDynamicMaterial()->SetTextureParameterValue(TEXT("Texture"), ShipComponentProperty->ComponentIcon);

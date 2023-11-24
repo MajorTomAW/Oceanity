@@ -5,8 +5,11 @@
 #include "CoreMinimal.h"
 #include "NiagaraSystem.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-#include "OceanityGame/GameObjects/ShipComponents/ExecuteProperty/ExecuteProperty.h"
 #include "ShipLibrary.generated.h"
+
+class UOceanityAbility;
+class UExecuteProperty;
+class AProjectileBase;
 
 UENUM(BlueprintType)
 enum class ECameraState : uint8
@@ -99,7 +102,7 @@ struct FShipComponentProperty : public FTableRowBase
 
 	bool operator==(const FShipComponentProperty& Other) const
 	{
-		return ComponentName == Other.ComponentName;
+		return ComponentId == Other.ComponentId;
 	}
 };
 
@@ -120,20 +123,19 @@ struct FTurretComponentProperty : public FShipComponentProperty
 
 	// Execute Property
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<UExecuteProperty> ExecuteProperty;
+	TSubclassOf<UOceanityAbility> ShootAbility = nullptr;
 
 	// Turret shoot cooldown
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float ShootCooldown = 0.f;
+
+	// Bullets
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Ammo = 0;
 	
 	// Turret projectile class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> ProjectileClass = nullptr;
-
-	bool operator==(const FTurretComponentProperty& Other) const
-	{
-		return ComponentName == Other.ComponentName;
-	}
+	TSubclassOf<AProjectileBase> ProjectileClass = nullptr;
 };
 
 // Engine component
@@ -183,11 +185,6 @@ struct FEngineComponentProperty : public FShipComponentProperty
 	
 	bool bCanTurn = true;
 	bool bCanAccelerate = true;
-
-	bool operator==(const FEngineComponentProperty& Other) const
-	{
-		return ComponentName == Other.ComponentName;
-	}
 };
 
 // Hull component
@@ -216,13 +213,6 @@ struct FHullComponentProperty : public FShipComponentProperty
 	// Hull movement multiplier
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float HullMovementMultiplier = 1.f;
-
-	bool operator==(const FHullComponentProperty& Other) const
-	{
-		return ComponentName == Other.ComponentName &&
-			   Health == Other.Health &&
-			   Mass == Other.Mass;
-	}
 };
 
 /** Ship property */

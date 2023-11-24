@@ -37,15 +37,15 @@ void UButtonBase::SetButtonActive(bool bNewActive)
 	{
 		FLinearColor Color = NormalAsset->Brush.TintColor.GetSpecifiedColor();
 		Color.A = Color.A + 0.1f;
-		FSlateBrush HoveredColor = NormalAsset->Brush;
-		HoveredColor.TintColor = FSlateColor(Color);
+		FSlateBrush Hovered = NormalAsset->Brush;
+		Hovered.TintColor = FSlateColor(Color);
 		Color.A = Color.A - 0.2f;
-		FSlateBrush PressedColor = NormalAsset->Brush;
-		PressedColor.TintColor = FSlateColor(Color);
+		FSlateBrush Pressed = NormalAsset->Brush;
+		Pressed.TintColor = FSlateColor(Color);
 		
 		ButtonStyle.Normal = NormalAsset->Brush;
-		ButtonStyle.Hovered = HoveredColor;
-		ButtonStyle.Pressed = PressedColor;
+		ButtonStyle.Hovered = Hovered;
+		ButtonStyle.Pressed = Pressed;
 	}
 	
 	Button->SetStyle(ButtonStyle);
